@@ -1,0 +1,70 @@
+[
+  {
+    "telegram_id": 100000001,
+    "full_name": "Test Owner",
+    "username": "test_owner",
+    "role": "admin",
+    "is_active": true,
+    "bath_order": 3,
+    "general_pair_order": 3,
+    "general_pair_slot": 2
+  },
+  {
+    "telegram_id": 100000002,
+    "full_name": "Test Resident One",
+    "username": "test_resident_one",
+    "role": "resident",
+    "is_active": true,
+    "kitchen_order": 1,
+    "general_pair_order": 1,
+    "general_pair_slot": 1
+  },
+  {
+    "telegram_id": 100000003,
+    "full_name": "Test Resident Two",
+    "username": "test_resident_two",
+    "role": "resident",
+    "is_active": true,
+    "kitchen_order": 2,
+    "general_pair_order": 1,
+    "general_pair_slot": 2
+  },
+  {
+    "telegram_id": 100000004,
+    "full_name": "Test Resident Three",
+    "username": "test_resident_three",
+    "role": "resident",
+    "is_active": true,
+    "kitchen_order": 3,
+    "general_pair_order": 2,
+    "general_pair_slot": 1
+  },
+  {
+    "telegram_id": 100000005,
+    "full_name": "Test Resident Four",
+    "username": "test_resident_four",
+    "role": "resident",
+    "is_active": true,
+    "kitchen_order": 4,
+    "general_pair_order": 2,
+    "general_pair_slot": 2
+  },
+  {
+    "telegram_id": 100000006,
+    "full_name": "Test Resident Five",
+    "username": "test_resident_five",
+    "role": "resident",
+    "is_active": true,
+    "bath_order": 1,
+    "general_pair_order": 3,
+    "general_pair_slot": 1
+  },
+  {
+    "telegram_id": 100000007,
+    "full_name": "Test Resident Six",
+    "username": "test_resident_six",
+    "role": "resident",
+    "is_active": true,
+    "bath_order": 2
+  }
+]

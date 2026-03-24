@@ -1,0 +1,23 @@
+services:
+  bot:
+    build: .
+    container_name: coliving_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_PATH: /app/data/coliving.db
+      BACKUP_LOCAL_DIR: /app/data/backups
+      LOG_DIR: /app/logs
+      LOG_FILE: /app/logs/bot.log
+    volumes:
+      - ./residents.json:/app/residents.json:ro
+      - bot_data:/app/data
+      - bot_logs:/app/logs
+    command: python main.py
+    ports:
+      - "8080:8080"
+
+volumes:
+  bot_data:
+  bot_logs:

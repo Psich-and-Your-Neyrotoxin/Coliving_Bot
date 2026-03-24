@@ -1,0 +1,77 @@
+settings:
+  coliving_name: Demo Coliving
+  timezone: Europe/Kyiv
+  owner_id: 123456789
+  group_id: -1001234567890
+  language: uk
+  setup_complete: false
+
+feature_flags:
+  reports: true
+  fines: true
+  payments: true
+  swaps: true
+  deadlines: true
+  reminders: true
+  delegates: true
+  calendar_exceptions: true
+
+residents:
+  - telegram_id: 123456789
+    full_name: Власник Приклад
+    username: owner_example
+    role: owner
+    is_active: true
+  - telegram_id: 222222222
+    full_name: Мешканець Один
+    username: resident_one
+    role: resident
+    is_active: true
+  - telegram_id: 333333333
+    full_name: Мешканець Два
+    username: resident_two
+    role: resident
+    is_active: true
+
+zones:
+  - code: kitchen
+    title: Кухня
+    enabled: true
+    sort_order: 10
+    team_size_mode: fixed
+    report_required: true
+    report_deadline_time: "01:00"
+    private_reminder_time: "23:00"
+    group_reminder_enabled: false
+    private_reminder_enabled: true
+    rotation_enabled: true
+    rule:
+      rotation_mode: ordered
+      rotation_every_days: 1
+      team_pattern: [1]
+      anchor_date: "2026-01-01"
+      member_order: [222222222, 333333333]
+      member_groups: []
+    extra_config:
+      report_offset_days: 0
+
+  - code: laundry
+    title: Пральня
+    enabled: true
+    sort_order: 20
+    team_size_mode: pattern
+    report_required: true
+    report_deadline_time: "20:00"
+    private_reminder_time: "18:00"
+    group_reminder_enabled: false
+    private_reminder_enabled: true
+    rotation_enabled: true
+    rule:
+      rotation_mode: ordered
+      rotation_every_days: 10
+      team_pattern: [1, 2, 1]
+      anchor_date: "2026-01-01"
+      member_order: [222222222, 333333333, 123456789]
+      member_groups: []
+    extra_config:
+      report_offset_days: 9

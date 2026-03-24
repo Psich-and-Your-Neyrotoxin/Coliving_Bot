@@ -1,0 +1,56 @@
+[
+  {
+    "telegram_id": 123456789,
+    "full_name": "Owner Example",
+    "role": "admin",
+    "bath_order": 3,
+    "general_pair_order": 3,
+    "general_pair_slot": 2
+  },
+  {
+    "telegram_id": 222222222,
+    "full_name": "Resident One",
+    "role": "resident",
+    "kitchen_order": 1,
+    "general_pair_order": 1,
+    "general_pair_slot": 1
+  },
+  {
+    "telegram_id": 333333333,
+    "full_name": "Resident Two",
+    "role": "resident",
+    "kitchen_order": 2,
+    "general_pair_order": 1,
+    "general_pair_slot": 2
+  },
+  {
+    "telegram_id": 444444444,
+    "full_name": "Resident Three",
+    "role": "resident",
+    "kitchen_order": 3,
+    "general_pair_order": 2,
+    "general_pair_slot": 1
+  },
+  {
+    "telegram_id": 555555555,
+    "full_name": "Resident Four",
+    "role": "resident",
+    "kitchen_order": 4,
+    "general_pair_order": 2,
+    "general_pair_slot": 2
+  },
+  {
+    "telegram_id": 666666666,
+    "full_name": "Resident Five",
+    "role": "resident",
+    "bath_order": 1,
+    "general_pair_order": 3,
+    "general_pair_slot": 1
+  },
+  {
+    "telegram_id": 777777777,
+    "full_name": "Resident Six",
+    "role": "resident",
+    "bath_order": 2
+  }
+]

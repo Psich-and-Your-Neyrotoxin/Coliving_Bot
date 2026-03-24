@@ -16,6 +16,7 @@ from config import (
     ADMIN_ID,
     APP_ENV,
     APP_VERSION,
+    BACKUP_DESTINATION,
     BACKUP_ENABLED,
     BOT_MODE,
     BACKUP_INCLUDE_ENV,
@@ -106,6 +107,8 @@ async def main() -> None:
             owner_id=int(ADMIN_ID),
             group_id=int(GROUP_ID),
         )
+        backup_destination = str(await db.get_setting("backup_destination", BACKUP_DESTINATION) or BACKUP_DESTINATION)
+        backup_local_dir = str(await db.get_setting("backup_local_dir", BACKUP_LOCAL_DIR) or BACKUP_LOCAL_DIR)
         runtime_definition = await load_instance_definition(
             db,
             residents_path=RESIDENTS_JSON_PATH,
@@ -144,10 +147,11 @@ async def main() -> None:
         residents_path=Path(RESIDENTS_JSON_PATH),
         enabled=BACKUP_ENABLED,
         interval_hours=BACKUP_INTERVAL_HOURS,
-        local_dir=Path(BACKUP_LOCAL_DIR),
+        local_dir=Path(backup_local_dir),
         include_env=BACKUP_INCLUDE_ENV,
         env_path=Path(".env"),
         keep_count=BACKUP_KEEP_COUNT,
+        destination=backup_destination,
         admin_id=int(ADMIN_ID),
         bot=bot,
     )

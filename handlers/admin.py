@@ -141,6 +141,16 @@ class AdminFSM(StatesGroup):
     entering_runtime_zone_edit_pattern = State()
     entering_setup_residents = State()
     entering_runtime_zone_edit_members = State()
+    entering_backup_local_dir = State()
+
+
+BACKUP_DESTINATION_KEY = "backup_destination"
+BACKUP_LOCAL_DIR_KEY = "backup_local_dir"
+BACKUP_DESTINATION_LABELS = {
+    "local": "Локально",
+    "admin": "Адміну в Telegram",
+    "both": "Локально + адміну",
+}
 
 
 async def admin_panel_text(db: Database, user_id: int) -> str:
@@ -336,7 +346,7 @@ def _permission_for_admin_action(action: str) -> str | None:
         return PERM_EXCEPTIONS_MANAGE
     if action in {"payment_folders", "bank_url"}:
         return PERM_PAYMENTS_MANAGE
-    if action in {"backup_now", "restore_menu"}:
+    if action in {"backup_now", "restore_menu", "backup_settings"}:
         return PERM_BACKUPS_MANAGE
     if action in {"health", "version", "error_log", "runtime_config", "runtime_flags", "runtime_zones"}:
         return PERM_SYSTEM_VIEW
@@ -468,6 +478,7 @@ async def _admin_system_kb(db: Database, user_id: int) -> InlineKeyboardMarkup:
         flat_buttons.extend(
             [
                 InlineKeyboardButton(text="🗂 Бекап зараз", callback_data="admin:backup_now"),
+                InlineKeyboardButton(text="⚙️ Бекапи", callback_data="admin:backup_settings"),
                 InlineKeyboardButton(text="♻️ Відновити", callback_data="admin:restore_menu"),
             ]
         )
@@ -1574,6 +1585,8 @@ def _format_admin_action_entry(row: dict, admin_name: str, target_name: str) -> 
         "manual_override": "змінив ручне чергування",
         "clear_manual_override": "скасував ручне чергування",
         "restore_backup": "відновив бекап",
+        "update_backup_destination": "змінив режим збереження бекапів",
+        "update_backup_local_dir": "змінив локальну папку бекапів",
         "issue_fine": "виписав штраф",
         "fine_after_reject": "виписав штраф після відхилення звіту",
         "deadline_bank_fine": "виписав грошовий штраф за дедлайн",
@@ -1592,6 +1605,11 @@ async def _health_text(db: Database, scheduler_service=None, backup_service=None
     env_name = await db.get_setting("app_env", "production")
     scheduler_running = "так" if getattr(getattr(scheduler_service, "scheduler", None), "running", False) else "ні"
     backup_enabled = "так" if getattr(backup_service, "enabled", False) else "ні"
+    backup_destination = BACKUP_DESTINATION_LABELS.get(
+        str(getattr(backup_service, "destination", "both")),
+        str(getattr(backup_service, "destination", "both")),
+    )
+    backup_local_dir = str(getattr(backup_service, "local_dir", "backups"))
     group_time = await db.get_setting(f"time:{JOB_GROUP_MORNING}", "09:00")
     definition = await load_instance_definition(db)
     reminder_lines = [f"• Група: <b>{group_time}</b>"]
@@ -1608,6 +1626,8 @@ async def _health_text(db: Database, scheduler_service=None, backup_service=None
         f"База: <b>{db_path or '—'}</b>\n"
         f"Планувальник активний: <b>{scheduler_running}</b>\n"
         f"Автобекап активний: <b>{backup_enabled}</b>\n"
+        f"Куди летять бекапи: <b>{backup_destination}</b>\n"
+        f"Локальна папка бекапів: <b>{backup_local_dir}</b>\n"
         "\n"
         "Поточні scheduler-часи:\n"
         f"{chr(10).join(reminder_lines)}\n"
@@ -1646,6 +1666,47 @@ async def _restore_menu_text(backup_service) -> tuple[str, InlineKeyboardMarkup]
             rows.append([InlineKeyboardButton(text=backup.name, callback_data=f"restore_pick:{backup.name}")])
     rows.append([InlineKeyboardButton(text="⬅️ До системи", callback_data="admin:section_system")])
     return "\n".join(text_lines), InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _backup_settings_text(db: Database, backup_service) -> str:
+    destination = str(getattr(backup_service, "destination", "both"))
+    local_dir = str(getattr(backup_service, "local_dir", "backups"))
+    stores_local = "так" if getattr(backup_service, "stores_local_copy", False) else "ні"
+    sends_admin = "так" if getattr(backup_service, "sends_to_admin", False) else "ні"
+    return (
+        "🗂 <b>Налаштування бекапу</b>\n\n"
+        f"Автобекап увімкнений: <b>{'так' if getattr(backup_service, 'enabled', False) else 'ні'}</b>\n"
+        f"Режим доставки: <b>{BACKUP_DESTINATION_LABELS.get(destination, destination)}</b>\n"
+        f"Локально зберігати: <b>{stores_local}</b>\n"
+        f"Надсилати адміну: <b>{sends_admin}</b>\n"
+        f"Локальна папка: <b>{local_dir}</b>\n\n"
+        "Тут можна переключити, куди саме летять бекапи."
+    )
+
+
+def _backup_settings_kb(backup_service) -> InlineKeyboardMarkup:
+    destination = str(getattr(backup_service, "destination", "both"))
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=f"{'✅ ' if destination == 'local' else ''}Локально",
+                callback_data="admin:backup_dest:local",
+            ),
+            InlineKeyboardButton(
+                text=f"{'✅ ' if destination == 'admin' else ''}Адміну",
+                callback_data="admin:backup_dest:admin",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text=f"{'✅ ' if destination == 'both' else ''}І туди, і туди",
+                callback_data="admin:backup_dest:both",
+            )
+        ],
+        [InlineKeyboardButton(text="📁 Змінити папку", callback_data="admin:backup_local_dir")],
+        [InlineKeyboardButton(text="⬅️ До системи", callback_data="admin:section_system")],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 async def _test_whitelist_kb(db: Database) -> InlineKeyboardMarkup:
@@ -2027,8 +2088,55 @@ async def admin_actions(
         logging.info("Ручний запуск бекапу | admin_id=%s", int(callback.from_user.id))
         backup_path = await backup_service.create_backup()
         await backup_service.send_backup_to_admin(backup_path, automatic=False)
+        if not getattr(backup_service, "stores_local_copy", True):
+            backup_path.unlink(missing_ok=True)
         await db.log_admin_action(int(callback.from_user.id), "manual_backup", details=backup_path.name)
         await callback.answer("Бекап надіслано в ПП ✅", show_alert=True)
+        return
+
+    if action == "backup_settings":
+        await callback.message.edit_text(
+            await _backup_settings_text(db, backup_service),
+            reply_markup=_backup_settings_kb(backup_service),
+        )
+        await callback.answer()
+        return
+
+    if action.startswith("backup_dest:"):
+        if not backup_service:
+            await callback.answer("Сервіс бекапу недоступний", show_alert=True)
+            return
+        destination = action.split(":", 1)[1]
+        if destination not in {"local", "admin", "both"}:
+            await callback.answer("Невідомий режим", show_alert=True)
+            return
+        backup_service.destination = destination
+        if getattr(backup_service, "stores_local_copy", False):
+            backup_service.local_dir.mkdir(parents=True, exist_ok=True)
+        await db.set_setting(BACKUP_DESTINATION_KEY, destination)
+        await db.log_admin_action(int(callback.from_user.id), "update_backup_destination", details=destination)
+        await callback.message.edit_text(
+            await _backup_settings_text(db, backup_service),
+            reply_markup=_backup_settings_kb(backup_service),
+        )
+        await callback.answer("Режим бекапу оновлено")
+        return
+
+    if action == "backup_local_dir":
+        if not backup_service:
+            await callback.answer("Сервіс бекапу недоступний", show_alert=True)
+            return
+        await state.set_state(AdminFSM.entering_backup_local_dir)
+        await _remember_admin_message(state, callback.message)
+        await callback.message.edit_text(
+            "📁 <b>Локальна папка бекапів</b>\n\n"
+            f"Поточне значення: <b>{backup_service.local_dir}</b>\n\n"
+            "Надішли новий шлях, наприклад:\n"
+            "<code>backups</code>\n"
+            "<code>/var/lib/coliving/backups</code>",
+            reply_markup=_admin_section_back_kb(),
+        )
+        await callback.answer()
         return
 
     if action == "restore_menu":
@@ -3901,6 +4009,49 @@ async def start_runtime_setup(callback: CallbackQuery, state: FSMContext) -> Non
     await callback.answer()
 
 
+@router.callback_query(lambda c: c.data and c.data.startswith("admin:backup_dest:"))
+async def set_backup_destination(callback: CallbackQuery, db: Database, backup_service=None) -> None:
+    if not callback.from_user or not await has_permission(db, int(callback.from_user.id), PERM_BACKUPS_MANAGE):
+        await callback.answer("Доступ обмежено", show_alert=True)
+        return
+    if not callback.message or not backup_service:
+        await callback.answer("Сервіс бекапу недоступний", show_alert=True)
+        return
+    destination = callback.data.rsplit(":", 1)[1]
+    if destination not in {"local", "admin", "both"}:
+        await callback.answer("Невідомий режим", show_alert=True)
+        return
+    backup_service.destination = destination
+    await db.set_setting(BACKUP_DESTINATION_KEY, destination)
+    await db.log_admin_action(int(callback.from_user.id), "update_backup_destination", details=destination)
+    await callback.message.edit_text(
+        await _backup_settings_text(db, backup_service),
+        reply_markup=_backup_settings_kb(backup_service),
+    )
+    await callback.answer("Режим бекапу оновлено")
+
+
+@router.callback_query(lambda c: c.data == "admin:backup_local_dir")
+async def enter_backup_local_dir(callback: CallbackQuery, state: FSMContext, db: Database, backup_service=None) -> None:
+    if not callback.from_user or not await has_permission(db, int(callback.from_user.id), PERM_BACKUPS_MANAGE):
+        await callback.answer("Доступ обмежено", show_alert=True)
+        return
+    if not callback.message or not backup_service:
+        await callback.answer("Сервіс бекапу недоступний", show_alert=True)
+        return
+    await state.set_state(AdminFSM.entering_backup_local_dir)
+    await _remember_admin_message(state, callback.message)
+    await callback.message.edit_text(
+        "📁 <b>Локальна папка бекапів</b>\n\n"
+        f"Поточне значення: <b>{backup_service.local_dir}</b>\n\n"
+        "Надішли новий шлях, наприклад:\n"
+        "<code>backups</code>\n"
+        "<code>/var/lib/coliving/backups</code>",
+        reply_markup=_admin_section_back_kb(),
+    )
+    await callback.answer()
+
+
 @router.callback_query(lambda c: c.data == "runtime_setup:residents")
 async def start_runtime_setup_residents(callback: CallbackQuery, state: FSMContext) -> None:
     if not callback.from_user or not is_owner_id(int(callback.from_user.id)):
@@ -4510,6 +4661,35 @@ async def runtime_import_json(message: Message, state: FSMContext, db: Database)
         message.bot,
         text=await _runtime_config_text(db),
         reply_markup=_runtime_config_kb(definition, can_manage=True),
+    )
+    await state.clear()
+
+
+@router.message(AdminFSM.entering_backup_local_dir)
+async def backup_local_dir_input(message: Message, state: FSMContext, db: Database, backup_service=None) -> None:
+    resident = await require_resident(message, db)
+    if not resident or not backup_service:
+        return
+    if not await has_permission(db, int(resident["telegram_id"]), PERM_BACKUPS_MANAGE):
+        await message.answer("Доступ обмежено")
+        return
+    raw = (message.text or "").strip()
+    if not raw:
+        await message.answer("Шлях не може бути порожнім.")
+        return
+    from pathlib import Path as _Path
+
+    backup_service.local_dir = _Path(raw)
+    if getattr(backup_service, "stores_local_copy", False):
+        backup_service.local_dir.mkdir(parents=True, exist_ok=True)
+    await db.set_setting(BACKUP_LOCAL_DIR_KEY, raw)
+    await db.log_admin_action(int(resident["telegram_id"]), "update_backup_local_dir", details=raw)
+    await _cleanup_user_input(message)
+    await _edit_admin_message(
+        state,
+        message.bot,
+        text=await _backup_settings_text(db, backup_service),
+        reply_markup=_backup_settings_kb(backup_service),
     )
     await state.clear()
 

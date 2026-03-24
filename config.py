@@ -38,6 +38,7 @@ BACKUP_INTERVAL_HOURS = int(os.getenv("BACKUP_INTERVAL_HOURS", "48"))
 BACKUP_LOCAL_DIR = os.getenv("BACKUP_LOCAL_DIR", "backups")
 BACKUP_INCLUDE_ENV = os.getenv("BACKUP_INCLUDE_ENV", "0") == "1"
 BACKUP_KEEP_COUNT = int(os.getenv("BACKUP_KEEP_COUNT", "10"))
+BACKUP_DESTINATION = os.getenv("BACKUP_DESTINATION", "both").strip().lower()
 
 WEBHOOK_ENABLED = os.getenv("WEBHOOK_ENABLED", "0") == "1"
 WEBHOOK_HOST = os.getenv("WEBHOOK_HOST", "0.0.0.0")
@@ -70,6 +71,9 @@ def validate_config() -> None:
 
     if BOT_MODE and BOT_MODE not in {"polling", "webhook"}:
         raise RuntimeError("BOT_MODE має бути або 'polling', або 'webhook'.")
+
+    if BACKUP_DESTINATION not in {"local", "admin", "both"}:
+        raise RuntimeError("BACKUP_DESTINATION має бути 'local', 'admin' або 'both'.")
 
     if is_webhook_mode() and not WEBHOOK_BASE_URL:
         raise RuntimeError("Для webhook-режиму потрібно заповнити WEBHOOK_BASE_URL.")

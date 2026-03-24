@@ -29,6 +29,7 @@ class BackupService:
     include_env: bool = False
     env_path: Path = Path(".env")
     keep_count: int = 10
+    destination: str = "both"
     admin_id: int = 0
     bot: object | None = None
     _task: asyncio.Task | None = field(default=None, init=False, repr=False)
@@ -39,8 +40,17 @@ class BackupService:
             return
         if self._task and not self._task.done():
             return
-        self.local_dir.mkdir(parents=True, exist_ok=True)
+        if self.stores_local_copy:
+            self.local_dir.mkdir(parents=True, exist_ok=True)
         self._task = asyncio.create_task(self._runner())
+
+    @property
+    def stores_local_copy(self) -> bool:
+        return self.destination in {"local", "both"}
+
+    @property
+    def sends_to_admin(self) -> bool:
+        return self.destination in {"admin", "both"}
 
     async def _runner(self) -> None:
         logging.info("Автобекап увімкнено. Інтервал: %s год.", self.interval_hours)
@@ -48,7 +58,10 @@ class BackupService:
             try:
                 await asyncio.sleep(max(1, int(self.interval_hours)) * 3600)
                 backup_path = await self.create_backup()
-                await self.send_backup_to_admin(backup_path, automatic=True)
+                if self.sends_to_admin:
+                    await self.send_backup_to_admin(backup_path, automatic=True)
+                if not self.stores_local_copy:
+                    backup_path.unlink(missing_ok=True)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -57,9 +70,11 @@ class BackupService:
 
     async def create_backup(self, *, cleanup: bool = True) -> Path:
         timestamp = _now_kyiv().strftime("%Y-%m-%d_%H-%M-%S_%f")
-        backup_path = self.local_dir / f"coliving_backup_{timestamp}.zip"
+        base_dir = self.local_dir if self.stores_local_copy else Path("/tmp")
+        base_dir.mkdir(parents=True, exist_ok=True)
+        backup_path = base_dir / f"coliving_backup_{timestamp}.zip"
         await asyncio.to_thread(self._write_zip, backup_path)
-        if cleanup:
+        if cleanup and self.stores_local_copy:
             await asyncio.to_thread(self._cleanup_old_backups)
         return backup_path
 
@@ -73,6 +88,8 @@ class BackupService:
                 archive.write(self.env_path, arcname=".env")
 
     def list_backups(self, limit: int = 20) -> list[Path]:
+        if not self.stores_local_copy:
+            return []
         self.local_dir.mkdir(parents=True, exist_ok=True)
         files = sorted(self.local_dir.glob("coliving_backup_*.zip"), reverse=True)
         return files[:limit]
@@ -108,7 +125,7 @@ class BackupService:
             raise RuntimeError("Пошкоджений backup zip.") from exc
 
     async def send_backup_to_admin(self, backup_path: Path, *, automatic: bool = False) -> None:
-        if not self.bot or not self.admin_id:
+        if not self.bot or not self.admin_id or not self.sends_to_admin:
             return
         caption_prefix = "🗂 Автобекап" if automatic else "🗂 Ручний бекап"
         caption = (
